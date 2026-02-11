@@ -63,10 +63,21 @@ def is_gdrive_id(id_: str):
 
 
 def encode_slink(string):
-    return (urlsafe_b64encode(string.encode("ascii")).decode("ascii")).strip("=")
+    # Encoding to utf-8 is safer than ascii for modern web links
+    return (urlsafe_b64encode(string.encode("utf-8")).decode("ascii")).strip("=")
 
 
 def decode_slink(b64_str):
-    return urlsafe_b64decode(
-        (b64_str.strip("=") + "=" * (-len(b64_str.strip("=")) % 4)).encode("ascii")
-    ).decode("ascii")
+    try:
+        # Remove any leading/trailing whitespace that might include hidden characters
+        b64_str = b64_str.strip()
+        
+        # Base64 strings must be a multiple of 4. 
+        # Adding '===' handles cases where 1, 2, or 3 characters are missing; 
+        # Python's b64decode will ignore the extra padding.
+        padding = "=" * (4 - len(b64_str) % 4) if len(b64_str) % 4 != 0 else ""
+        
+        return urlsafe_b64decode(b64_str + padding).decode("utf-8", errors="ignore")
+    except Exception as e:
+        # Returns an empty string instead of crashing the bot if the link is totally unreadable
+        return ""
